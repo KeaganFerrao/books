@@ -1,0 +1,69 @@
+LIBUV: C library for non-blocking async I/O. Designed to power Node.js.
+1. Everything in the fs.* is not epollable. It uses a UV thread, unless they are sync methods. 
+   Then it happens in a blocking manner.
+2. Threads are also not epollable. There are various ways.One is something called a pipe is used. 
+   Where one end on the pipe is listening to events in the thread and the otehr end is in epoll
+3. dns.lookup() uses a thread pool like fs.* (Rest all DNS methods are non-blocking. Use c-ares a C library 
+   which is non-blocking)
+4. Child processes are epollable
+
+ Things that use the UV thread pool to make operations non-blocking:-
+1. fs
+2. dns.lookup() (Rest is fine)
+3. crypto (crypto.randomBytes() & crypto.pbkdf2()) 
+4. http.get/request() (If we provide a host and dns.lookup() has to be used)
+5. Sometimes C++ addons
+Default thread pool size is 4
+
+Order of execution of event loop:-
+
+1. Any callbacks in the microtask queue are executed. First, all tasks in the nextTick queue and only then all tasks in the promise queue. If while executing the nextTick, From within the callback we add more items in the nextTick, That will be executed as the nextTick queue(Within the microtask queue) is not empty. (Vice versa for Promise queue as well)
+2. All callbacks within the timer queue are executed.
+3. Callbacks in the microtask queue (if present) are executed after every callback in the timer queue. First, tasks in the nextTick queue, and then tasks in the promise queue.
+4. All callbacks within the I/O queue are executed.
+5. I/O polling, to check if any I/O is completed and add to the I/O queue to execute in the next iteration on event loop.
+6. Callbacks in the microtask queues (if present) are executed, starting with nextTickQueue and then Promise queue.
+7. All callbacks in the check queue are executed. (setImmediate callbacks)
+8. Callbacks in the microtask queues (if present) are executed after every callback in the check queue. First, tasks in the nextTick queue, and then tasks in the promise queue.
+9. All callbacks in the close queue are executed. (eg. socket.on(...) callbacks)
+10. For one final time in the same loop, the microtask queues are executed. First, tasks in the nextTick queue, and then tasks in the promise queue.
+
+Event loop only comes into picture ONLY IF the current call stack is empty
+
+Callbacks in microtask queues are executed in between the execution of callbacks in the timer queue
+
+When running setTimeout() with a delay of 0ms and an I/O async method, the order of execution can never be guaranteed.
+Reason:
+
+This inconsistency in output occurs due to the unpredictability of the order of execution when using setTimeout() with a delay of 0 milliseconds and an I/O asynchronous method. The obvious question that arises is, "Why can't the order of execution be guaranteed?"
+The anomaly is due to how a minimum delay is set for timers. In the C++ code for the DOMTimer, we come across a very interesting piece of code. The interval in milliseconds is calculated, but the calculation is capped at a maximum of 1 millisecond or the user-passed interval multiplied by 1 millisecond.
+This means that if we pass in 0 milliseconds, the interval is set to max(1,0), which is 1. This will result in setTimeout with a 1 millisecond delay. It seems that Node.js follows a similar implementation. When you set a 0 millisecond delay, it is overwritten to a 1 millisecond delay.
+At the start of the event loop, Node.js needs to determine if the 1ms timer has elapsed or not. If the event loop enters the timer queue at 0.05ms and the 1ms callback hasn't been queued, control moves on to the I/O queue, executing the readFile() callback. In the next iteration of the event loop, the timer queue callback will be executed.
+On the other hand, if the CPU is busy and enters the timer queue at 1.01 ms, the timer will have elapsed and the callback function will be executed. Control will then proceed to the I/O queue, and the readFile() callback will be executed.
+Due to the uncertainty of how busy the CPU can be and the 0ms delay being overwritten as 1ms delay, we can never guarantee the order of execution between a 0ms timer and an I/O callback.
+
+I/O events are polled and callback functions are added to the I/O queue only after the I/O is complete.
+Reason:
+Once an I/O operation completes, its callback function is not immediately queued into the I/O queue. Instead, an I/O polling phase checks for the completion of I/O operations and queues up the callbacks for completed operations. This can sometimes result in check queue callbacks being executed before I/O queue callbacks.
+However, when both queues contain callback functions, the callbacks in the I/O queue always take priority and run first. It is crucial to understand this behaviour when designing systems that rely on I/O callbacks to ensure the proper ordering and execution of callbacks
+
+Microtask queue callbacks are executed between check queue callbacks.
+
+The order of execution can never be guaranteed when running setTimeout() with a delay of 0ms and the setImmediate() method.
+
+Conclusion:
+The event loop is a C program that coordinates the execution of synchronous and asynchronous code in Node.js. It manages six different queues: nextTick, promise, timer, I/O, check, and close.
+To add a task to the nextTick queue, we use the process.nextTick() method. To add a task to the promise queue, we resolve or reject a promise. To add a task to the timer queue, we use setTimeout() or setInterval().
+To add a task to the I/O queue, we execute an async method. To add a task to the check queue, we use the setImmediate() function. Finally, to add a task to the close queue, we attach close event listeners.
+The order of execution follows the same order listed here. However, it's important to note that the nextTick and promise queues are executed in between each queue and also in between each callback execution in the timer and check queues.
+
+
+Important Links:-
+
+https://www.igoratakhanov.com/node-part-three.html
+https://www.igoratakhanov.com/node-part-two.html
+https://medium.com/@igor.atakhanov/how-node-actually-works-part-1-the-operating-system-497fd0de8167
+http://docs.libuv.org/en/v1.x/design.html
+https://man7.org/linux/man-pages/man7/epoll.7.html
+https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick#process-nexttick
+https://www.builder.io/blog/visual-guide-to-nodejs-event-loop

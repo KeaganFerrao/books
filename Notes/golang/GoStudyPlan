@@ -1,0 +1,29 @@
+Go study plans:- 
+
+#Basics
+Data types
+Variables
+Conditions
+Loops
+Switch
+Arrays
+Slice
+Maps
+Struct
+Sets
+Strings
+Functions
+Pointers
+
+#Advanced
+Goroutines
+Context
+Channels
+mutex
+Waitgroups
+Interfaces
+Packages/Modules
+JSON
+API requests
+SQL
+File handling

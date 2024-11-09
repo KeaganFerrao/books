@@ -1,0 +1,13 @@
+Basic API Security Checklist:-
+
+1. Proper Cache control headers
+2. Proper CSP/XSS/CSRF headers
+3. Rate limiting in proxy(Ngnix)
+4. Max wrong password attempts(To protect from over resource consumption of hash conmpare)
+5. Only parametrized queries to avoid SQL injection
+6. Remove server and powerer by header which are added by default by express(We do not need to expose which technology)
+7. Make sure all responses have a proper content type set.
+8. Database user to have least previliges only CRUD ideally. (Remove Drop access for the user as an API would never required to perform drop actions)
+9. All request/responses/origin/IP/agent,etc. sent by the server should be audit logged even unauthenticated requests.
+10. Set Strict-Transport-Security header to make sure everything is communicated only over HTTPS
+11. Prefix cookies by __Secure-{name} or __Host-{name} to enfore some browser inbuild protections.

@@ -1,0 +1,87 @@
+Go study plans:- 
+
+#Basics
+Data types
+Variables
+Constants
+Conditions
+Loops
+Switch
+Arrays
+Slice
+Maps
+Struct
+Strings
+Functions
+Methods
+Pointers
+Interfaces
+
+#Advanced
+Goroutines
+Context
+Channels
+mutex
+Waitgroups
+Packages/Modules
+JSON
+API requests
+SQL
+File handling
+Date/time
+Generics
+
+Notes:
+
+#Datatypes
+
+bool
+
+string
+
+int  int8  int16  int32  int64
+uint uint8 uint16 uint32 uint64 uintptr
+
+byte // alias for uint8
+
+rune // alias for int32
+     // represents a Unicode code point, Used to hold chars. When we loop over a string, each value is of type rune
+
+float32 float64 //There is no float8/16 due to precision of decimals it could be able to hold
+
+complex64 complex128
+
+uintptr
+
+#Zero Values
+
+Variable assigned without any values are given zero values,
+0 for numeric types,
+false for the boolean type, and
+"" for strings
+
+#Type Conversions
+
+Assignment between different types require an explicit type conversion like
+var i int = 42
+var f float64 = float64(i)	
+
+#Constants
+
+Constants are declared with the const keyword
+Constants are untypes until they are used in the context
+
+#Loops
+
+Go has only 1 loop - for init;condition;post
+
+To use it like a while loop, we can use it with only the condition\
+
+#Arrays
+
+They have a fixed length, cannot be resized.
+For more flexibility, we use slices. They internally use an array of a fixed size and resize as required. Slices have a length and a capacity. The length is the current no. of elements. The capacity is the size of the internal array. After which it will have to resize.
+
+for range can be used to loop over a slice or an array.
+If we slice an array, It will just reference the same original array not create a new one.
+If we need to get a new array not the reference, we can use the copy function to copy slice into a new slice.

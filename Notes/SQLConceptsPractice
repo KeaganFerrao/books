@@ -1,0 +1,147 @@
+1. Write a query that calculates the difference between the highest salaries found in the marketing and engineering departments. Output just the absolute difference in salaries
+
+select abs((max(salary) filter (where department = 'marketing')) -
+(max(salary) filter (where department = 'engineering'))) as salary_difference
+from db_employee e inner join db_dept d
+on e.department_id = d.id;
+
+Explanation: The filter clause with a where condition can be used with any aggerate function. If the filter where evaluates to true, the input will be fed to the aggerate function otherwise not.
+
+2. We have a table with employees and their salaries, however, some of the records are old and contain outdated salary information. Find the current salary of each employee assuming that salaries increase each year. Output their id, first name, last name, department ID, and current salary. Order your list by employee ID in ascending order.
+
+select id, first_name, last_name, department_id, max(salary) from ms_employee_salary
+group by id, first_name, last_name, department_id
+order by id;
+
+Explanation: We have grouped by all the columns required in the select because we cannot include any columns in the select which are not in the group by except in the aggerate functions
+
+3. Find all posts which were reacted to with a heart. For such posts output all columns from facebook_posts table.
+ID 10087
+
+select distinct p.* from facebook_reactions r inner join facebook_posts p
+on r.post_id = p.post_id and r.reaction = 'heart'
+
+Explanation: We use distinct so that we get only distinct posts from p.*.
+
+4. Compare each employee's salary with the average salary of the corresponding department.
+Output the department, first name, and salary of employees along with the average salary of that department.
+ID 9917
+
+SELECT 
+        department, 
+        first_name, 
+        salary, 
+        AVG(salary) over (PARTITION BY department) 
+FROM employee;
+
+Explanation: We use the over window function with partion by so that we can get individual windows of each department and then perform aggerate function avg() over each window
+
+
+5. Find the number of workers by department who joined in or after April.
+Output the department name along with the corresponding number of workers.
+Sort records based on the number of workers in descending order.
+
+select department, count(*) from worker
+where EXTRACT(month FROM joining_date) >= 4
+group by department
+order by 2 desc;
+
+Explanation: We use EXRACT to get the month from the date.
+
+6. Write a query that will calculate the number of shipments per month. The unique key for one shipment is a combination of shipment_id and sub_id. Output the year_month in format YYYY-MM and the number of shipments in that month.
+
+SELECT 
+    TO_CHAR(DATE_TRUNC('month', shipment_date), 'YYYY-MM') AS year_month, 
+    COUNT(*) AS order_count
+FROM 
+    amazon_shipment
+GROUP BY 
+    year_month
+ORDER BY 
+    year_month;
+
+
+Explaination: We use DATE_TRUNC('month', date) to get the date rounded to the month value. For example, DATE_TRUNC('month', '2022-04-04'::date) will become '2022-04-01 00:00:00'
+
+7. Calculate each user's average session time. A session is defined as the time difference between a page_load and page_exit. For simplicity, assume a user has only 1 session per day and if there are multiple of the same events on that day, consider only the latest page_load and earliest page_exit, with an obvious restriction that load time event should happen before exit time event . Output the user_id and their average session time.
+
+ID 10352
+
+WITH ordered_actions AS (
+    SELECT user_id, timestamp, action,
+           ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY timestamp) as seq_num
+    FROM facebook_web_log
+    WHERE action IN ('page_load', 'page_exit')
+),
+matched_sessions AS (
+    SELECT
+        a.user_id,
+        a.timestamp AS load_time,
+        b.timestamp AS exit_time,
+        b.timestamp - a.timestamp AS session_duration
+    FROM ordered_actions a
+    JOIN ordered_actions b ON a.user_id = b.user_id AND a.seq_num = b.seq_num - 1
+    WHERE a.action = 'page_load' AND b.action = 'page_exit'
+)
+SELECT user_id, AVG(session_duration) AS avg_session_duration
+FROM matched_sessions
+GROUP BY user_id;
+
+Explanation: The ordered_actions CTE give us all the page_load and page_exit events and assigns a row number with it. The matched_sessions CTE does a self join and only keeps those records which have a page_load before a page_exit. The final query gives the result
+
+8. Write a query that'll identify returning active users. A returning active user is a user that has made a second purchase within 7 days of any other of their purchases. Output a list of user_ids of these returning active users.
+
+ID 10322
+
+select distinct a1.user_id from amazon_transactions a1 
+inner join amazon_transactions a2 
+on a1.user_id = a2.user_id and a1.id != a2.id
+where abs(a1.created_at - a2.created_at) <= 7;
+
+Explanation: A self join is used with the condition a1.user_id = a2.user_id and a1.id != a2.id.
+The condition 'and a1.id != a2.id' is used so that we ignore joining with the same rows.
+
+9. Identify projects that are at risk for going overbudget. A project is considered to be overbudget if the cost of all employees assigned to the project is greater than the budget of the project.
+You'll need to prorate the cost of the employees to the duration of the project. For example, if the budget for a project that takes half a year to complete is $10K, then the total half-year salary of all employees assigned to the project should not exceed $10K. Salary is defined on a yearly basis, so be careful how to calculate salaries for the projects that last less or more than one year.
+Output a list of projects that are overbudget with their project name, project budget, and prorated total employee expense (rounded to the next dollar amount).
+HINT: to make it simpler, consider that all years have 365 days. You don't need to think about the leap years.
+
+
+with cte as (
+    select title, sum(salary)/365 as totaldailysalary, 
+    (end_date - start_date) as totaldays, budget
+    from linkedin_projects as lp
+    inner join linkedin_emp_projects as lep
+    on lp.id = lep.project_id
+    inner join linkedin_employees as le
+    on lep.emp_id = le.id
+    group by title, budget, start_date, end_date
+)
+
+select title, budget, ceiling(totaldays * totaldailysalary) as prorated_employee_expense from cte
+where (totaldays * totaldailysalary) > budget
+order by title;
+
+Explanation: We create a seperate CTE which first formats the data properly and gives us as to what we need. Then we query it again for the result.
+
+10. What is the overall friend acceptance rate by date? Your output should have the rate of acceptances by the date the request was sent. Order by the earliest date to latest.
+
+Assume that each friend request starts by a user sending (i.e., user_id_sender) a friend request to another user (i.e., user_id_receiver) that's logged in the table with action = 'sent'. If the request is accepted, the table logs action = 'accepted'. If the request is not accepted, no record of action = 'accepted' is logged.
+
+with accepted_reqs as (
+    select user_id_sender, user_id_receiver 
+    from fb_friend_requests where action = 'accepted'
+), 
+sent_reqs as (
+    select date, user_id_sender, user_id_receiver 
+    from fb_friend_requests where action = 'sent'
+)
+
+select date, 
+(count(*) filter (where a.user_id_sender is not null))::numeric / count(*)::numeric as percentage_acceptance
+from sent_reqs s left join accepted_reqs a
+on a.user_id_sender = s.user_id_sender 
+and a.user_id_receiver = s.user_id_receiver
+group by date;
+
+Explanation: I have created 2 CTEs for sent and accepted so that the solution is more understandable. 
