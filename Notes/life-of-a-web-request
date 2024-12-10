@@ -1,0 +1,80 @@
+Life of a web request
+
+Part 1: DHCP (Getting an IP address assigned to the device)
+1. Laptop is connected to ethernet cable
+2. The device needs an IP address, so it uses DHCP to get an IP address before sending a request
+3. The OS creates a DHCP request message, puts this message in a UDP segment with destination port 67(UDP server) and source port (68) UDP client
+4. The UCP segment is placed within an IP datagram with a broadcast IP address of 255.255.255.255 and a source IP of 0.0.0.0 since the laptop does not
+have an IP address yet.
+5. The IP datagram containing the DHCP request is then placed in an ethernet frame. The ethernet frame has a destination MAC of ff:ff:ff:ff:ff:ff, so the 
+frame will be broadcasted to all devices connected to the switch (hopefully including a DHCP server). The frames source MAC would be the MAC accdress
+of the laptop.
+6. The broadcased ethernet frame containing the DHCP request is the first frame sent by the laptop to the ethernet switch. The switch broadcasts the incoming 
+frame to all outgoing ports, including the port connnected to the router.
+7. The router recieves the broadcast ethernet frame containing the DHCP request and the IP datagram is extracted from the ethernet frame. The datagrams
+broadcast IP destination address indicates that it must be processed by upper layer protocols.
+8. So the datgrams payload (which is a UDP segment) is then demultiplexed up to UDP and the DHCP request is extracted from the UDP segment. The DHCP server
+now has the DHCP message (DHCP server is runnign on the router)
+9. The DHCP server creates a DHCP ACK message containing the allocated IP address and the IP address of the DNS server, the IP address of the 
+default gateway and the subnet block. The DHCP message is put inside a UDP segment, which is put inside an IP datagram, which is put inside an 
+ethernet frame. This ethernet frame has a source MAC of the routers interace and a destination MAC of the laptops.
+10 .This ethernet frame is containing DHCP ACK sent by the router to the switch. Because the switch is self learning and the previous request contained
+the DHCP request from the laptop, the switch knows where to foward this DHCP ACK
+11. The laptop gets the ethernet frame, extracts the IP datagram from the ethernet frame, extracts the UDP segment from the IP datagram, extracts
+the DHCP message from the UDP segment. It also installs the address of the defaukt gateway in its IP fowarding table. Now the laptop will send all datagrams
+with destination IP address outside of the subnet to the default gateway.
+12. At this point the laptop is ready with an IP, to make a web request.
+
+Part 2: DNS (Getting the IP address from domain) and ARP (Getting MAC address from IP address)
+1. When the laptop enters the url www.google.com in its browser, the laptop will need to create a TCP socket that will be used to send the HTTP request to
+google.com. For this, the laptop would need to know the IP address of google.com. 
+2. So inorder to get the IP, the laptop will use DNS.
+3. The OS will create a DNS query message putting the string "www.google.com" in its question section of the DNS message. This message is then placed
+in the UDP segment with a destination port of 53(DNS server). The UDP segment is then placed in an IP datagram with a destination IP address of 
+the DNS server (Given by the DHCP ACK message in the Part 1) and a source IP address of itself.
+4. This IP datagram is then placed in a ethernet frame. This frame will br sent to the gateway router.
+5. Even though the laptop knows the IP address of the gateway router (Learned through DHCP in part 1), It does not know the gateway routers MAC address
+6. The laptop will need to used ARP to get the MAC address of the gateway router.
+7. The laptop creates an ARP query message with a target  IP address equal to the IP of the gateway router. Places this ARP message 
+within an ethernet frame with a broadcast address ff:ff:ff:ff:ff:ff and sends the ethernet frame to the switch which delivers the frame to all connnected
+device including the gateway router
+8. The gateway router recieves the frame contaiing the ARP query message, and finds that the target IP address matches the IP address of its interface
+9. The router then prepares an ARP reply message, containg the MAC address corresponding to its IP. It places the ARP reply in an ethernet frame
+with a destination MAC address of the laptop and sends the frame to the switch, which delivers the frame to the laptop.
+10. The laptop recieves the frame containing the ARP reply and extracts the MAC address of the gateway router.
+11. The laptop can now finally address the ethernet frame contaiing the DNS query to the gateway routers MAC address.
+12. Note that this IP datagram has a destination IP address of the DNS server, while the frame has a destination MAC of the gateway router.
+13. The laptop sends this frame to the switch, which delivers it to the gateway router.
+14. The gateway router recieves the frame and extracts the IP datagram contaiing the DNS query. The router looks up the destination address of this datagram
+and determines from its fowarding table that the datagram should be sent to a specfic router. the IP datagram i placed inside a link layer frame for teh appropriate 
+link and the frame is sent over the link.
+15. The specific router recieves the frame, extracts the IP datagram, examines the destination destination IP . and determines the outgoing interface on which
+to foward the datagram towards the DNS server from its fowarding table which has been filled by some router protocal as configured.
+16. Eventually, the IP datagram containing the DNS query reaches the DNS server. The DNS server extracts the DNS query message, looks up the name 
+google.com in its DNS database and finds the DNS record that contains the IP address(Assuming it has it cached in the server).
+17. The DNS server forms a DNS reply message containing the host to IP  mapping and places the DNS reply in a UDP segment and the segment withing an IP
+datagram addressed to the IP of the laptop. This IP datagram will be fowarded back to the laptop through the network
+18. The laptop gets the DNS reply and finallty gets the IP address of google.com server.
+
+Part 3: TCP and HTTP (Establishing a connection and actually sending the request/response)
+1. Now that the laptop has the IP address, it can create a TCP socket that will be used to send the HTTP GET message to google.com
+2. TCP running on the laptop must first perform TCP 3 way handshake with the TCP in google.com
+3. The laptop first creates a TCP SYN segment with a destination port of 80 (HTTP) places the TCP segment inside an IP datagram with a destination IP
+of google.com server and places this inside an ethernet frame with a destination MAC of the gateway router and send the frame to the switch.
+4. The routers along the way foward the datagram containing the TCP SYN towards google.com using the fowarding table in each router.
+5. Eventually the datagram containign the TCP SYN reaches google.com
+6. The TCP SYN message is extracted from the datagram and demultiplexed to the welcome socket associated with port 80.
+7. A connection socket is created for the TCP connection between google and the laptop
+8. A TCP SYNACK is generated and placed inside a datagram addresses to the laptop and finally placed inside a ethernet frame to its first hop router.
+9. The datagram containing the TCP SYNACK is fowarded though the network and eventually arrives at the laptop.
+10. The datagram is demultiplexed within the OS to the TCP socket created, which enters the connected state.
+11. With the socket on the laptop now ready to send bytes to google.com, the browser creates an HTTP GET message and is written to the socket.
+12. The GET message is the payload of a TCP segment which is sent.
+13. The HTTP server at google.com reads the HTTP GET message from the TCP socket, creates an HTTP response, places the requested content in the
+body of the HTTP response and sends the message into the TCP socket.
+14. This datagram is fowarded through the network and arrives at the laptop.
+15. The laptop reads the HTTP response from the socket, extracts the HTML data and finally displays the webpage.
+
+
+NOTE: For simplicity, we have eliminated a number of other protocols/steps that are encounterd when performing a web request 
+such as NAT, security, HTTPS/TLS, caching, DNS heirarchy and much more.
