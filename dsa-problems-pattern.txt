@@ -1,0 +1,16 @@
+Common solution patterns for problems:-
+  
+1. Two pointer technique - start and end
+2. Prefix and suffix sum of an array.
+3. Creating a hashmap of the data for quick lookups to check if a value exists.
+4. Sliding window of fixed size k or variable size.
+5. Local minima and Local maxima - To track the increase or a decrease in the list of values.
+  Used in problems such as Stock buy and sell - multiple transactions
+6. XOR operations - Because of the property x^x = 0
+  Used in problems such as Find the single element amoung all doubles in an array using O(N) time and O(1) space.
+7. Maintaining 2 pointers from the start. One to track the next position to update before which the list is already proper based on any condition(Sorted/all positive, etc) and other pointer to loop through the whole array
+  Used in problems such as - Move all zeros to the end of the array.
+8. Suffix maximum - Loop through the array from the end and keep a track of the maximum element seen to far.
+  Used in problems such as Find leaders in an array (Leader is elements beyond which all element are lesser than it)
+9. Based on math formulas:
+  Used in Sum of all subarrays: Contribution of each index i is arr[i] * (i+1) * (n-1). So we loop over ther list and apply the formula.
