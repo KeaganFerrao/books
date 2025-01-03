@@ -14,3 +14,5 @@ Common solution patterns for problems:-
   Used in problems such as Find leaders in an array (Leader is elements beyond which all element are lesser than it)
 9. Based on math formulas:
   Used in Sum of all subarrays: Contribution of each index i is arr[i] * (i+1) * (n-1). So we loop over ther list and apply the formula.
+10. Loop over the array and keep a globalSum and a maxSumEndingAtElement, we either extend the maxSumEndingAtElement by adding the current element or start a new sum by: maxSumEndingAtElement = max(maxSumEndingAtElement + arr[i], arr[i]). Then we check if this sum is greater that globalSum, if yes we update globalSum
+ This is Kadanes algorithm. Used in problems: Find the maximum subarray sum, Find the max subarray sum after repeated array concatination, Find max subarray product
